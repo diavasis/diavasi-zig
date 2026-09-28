@@ -6,7 +6,7 @@
 
 `consume` is a thin client of `diavasi.data.v1`. It opens a TLS stream, sends the bearer token, Hello version 1, then JoinGroup, and acks each batch. The caller stores no cursor and does not dedupe on `record_id`. A dropped stream is how unacked batches return. Reconnect with the same consumer id and the server replays them.
 
-`proto/data.proto` in this repository is the copy of `diavasi.data.v1` from [github.com/diavasis/diavasi](https://github.com/diavasis/diavasi) tag `v0.12.0`. Version 0.1.0 is the git tag `v0.1.0`. The transport is the C library in the `c/` submodule, [diavasi-c](https://github.com/diavasis/diavasi-c). `libgrpc` and `pkg-config` must be installed. Zig 0.16 is what this `build.zig` targets.
+`proto/data.proto` in this repository is the copy of `diavasi.data.v1` from [github.com/diavasis/diavasi](https://github.com/diavasis/diavasi) tag `v0.13.0`. Version 0.1.0 is the git tag `v0.1.0`. The transport is the C library in the `c/` submodule, [diavasi-c](https://github.com/diavasis/diavasi-c). Install gRPC the same way as that repository's Install section so `pkg-config` finds `grpc`. Zig 0.16 is what this `build.zig` targets.
 
 ## Library
 
@@ -49,7 +49,7 @@ switch (outcome) {
 Start the server from the repo root:
 
 ```bash
-cargo build -p diavasi-cli
+cargo build -p diavasi
 export PATH="$PWD/target/debug:$PATH"
 mkdir -p /tmp/diavasi-sdk
 diavasi serve --bind 127.0.0.1:7700 --data-bind 127.0.0.1:7710 \
@@ -59,6 +59,8 @@ diavasi serve --bind 127.0.0.1:7700 --data-bind 127.0.0.1:7710 \
 In a second terminal, from the repo root:
 
 ```bash
+curl -fsS -X POST -H "Authorization: Bearer sdk-demo" \
+  http://127.0.0.1:7700/v1/groups/demo/pause || true
 curl -fsS -X DELETE -H "Authorization: Bearer sdk-demo" \
   http://127.0.0.1:7700/v1/groups/demo || true
 curl -fsS -H "Authorization: Bearer sdk-demo" -H "content-type: application/json" \
@@ -69,6 +71,12 @@ curl -fsS -X POST -H "Authorization: Bearer sdk-demo" \
 
 zig build run
 ```
+
+Pause, delete, create, and start the group before another run. Delete returns 409 while it is running, and start resumes the cursor. A finished synthetic group leaves the client waiting on heartbeats.
+
+## Test
+
+`zig build test` runs the unit tests and the regressions. The regressions use an in-process stand-in for a data-plane session, so they do not need a running server. One checks that a fresh group yields record ids 1 through 8 and that `deinit` frees them. The other checks that a group that is not running is protocol error 5.
 
 `src/main.zig` is that program. Optional flags, last occurrence wins: `--addr`, `--ca`, `--token`, `--group`, `--consumer`.
 

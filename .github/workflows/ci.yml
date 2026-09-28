@@ -18,3 +18,4 @@ jobs:
       - name: Require the C submodule
         run: test -f c/include/diavasi.h
       - run: zig build
+      - run: zig build test
